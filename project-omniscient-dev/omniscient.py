@@ -1,62 +1,104 @@
-
-import webbrowser
-import time
-import pyautogui
-import platform
-import pygetwindow as gw
-
 # Start Up message
-print("Project Omniscient\nVersion: 0.0.1\nAuthor: Eben Vranken")
+import openai
+import os
+import platform
 
-# Browser manipulation
-chatGPTLink = "https://chat.openai.com/chat"
+# Program Info
+omniVersion = "0.0.1"
+omniAuthors = "Eben Vranken"
 
-print("Launching GPT.")
-webbrowser.open(chatGPTLink)
-time.sleep(3)
-browserApplication = gw.getActiveWindow()
-print("GPT launched.")
+# Signature
+print(
+    f"Project Omniscient\nVersion: {omniVersion}]\nAuthor(s): {omniAuthors}\n")
 
-# Reading system/OS information
+# Reading System Information
+print(f"Reading OS Information")
+
 osName = platform.system()
+osRelease = platform.release()
 osVersion = platform.version()
+home_directory = os.path.expanduser('~')
 
-# Enter template prompt
-protocolPrompt = f"Hello ChatGPT! I am using {osName} and {osVersion}. From now on, we will be following a protocol to ensure our conversations go smoothly. Whenever I ask you a question, please respond with a command and a command only. No apologies, no explanations, just the command. This is to ensure that we stay on track and get things done efficiently. Let's get started!"
-pyautogui.write(protocolPrompt)
-pyautogui.press('enter')
+# Declare API key environment variable
+# os.environ["OPENAI_API_KEY"] = input("Enter your OpenAI API key: ")
+os.environ["OPENAI_API_KEY"] = input("Enter your API key: ")
 
-# User Access Given
-print("User Access Given")
+# # API Key Authorization
+openai.api_key = os.getenv("OPENAI_API_KEY")
+
+# Initialize user menu
+isRunning = True
+totaltoken = 0
 
 # Command List
-cmd = [
-    "help", "info", "stop",
+commandList = [
+    "help",
+    "info",
+    "stop",
+    "usage",
 ]
 
-# User States
-isStopped = False
-
-# Command List
+# Commands
+# Help
 
 
 def help():
-    print("List of all current commands:\n-help: Get a list of all current commands\n-stop: Stops the application\n-info: Provides more information about Project Omniscient")
+    print(
+        f"""List of all current commands:
+-help: Get a list of all current commands
+-stop: Stops the application
+-info: Provides more information about Project Omniscient
+-usage: Provides the total token usage for the current session\n"""
+    )
 
 
+# Stop
 def stop():
-    global isStopped
-    isStopped = True
+    global isRunning
+    isRunning = False
 
 
-print("\nWelcome to Project Omniscient\nUse command /help for more information\n")
-while isStopped != True:
-    userInput = input(">enter command: ")
-    # Input was Omniscient command
-    if (userInput in cmd):
-        exec(userInput + "()")
-    else:
-        # Input was GPT command
-        browserApplication.activate()
-        pyautogui.write(userInput)
-        pyautogui.press('enter')
+# Info
+def info():
+    print(
+        f"""Project Omniscient is an Operating System Assistant powered by the GPT language model.
+Authors: {omniAuthors}
+Version: {omniVersion}\n"""
+    )
+
+
+def usage():
+    print(f"""Total token usage: {totaltoken}
+Price estimation: {0.002/1000*totaltoken}""")
+
+
+# Introduction message
+print("Welcome to Project Omniscient\nUse command /help for more information\n")
+
+while isRunning:
+    userInput = input(">Enter your command: ")
+    # Input is a command
+    if userInput[1:] in commandList:
+        exec(f"{userInput[1:]}()")
+    # Input is a Omniscient command
+    elif userInput != "":
+        completion = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system",
+                    "content": f"""Task: Provide terminal commands for various system-related tasks.
+
+As a helpful assistant, I can provide you with the necessary terminal commands to perform system-related tasks on {osName} {osRelease} ({osVersion}), with your home directory located at {home_directory}. Please note that I will only respond with the necessary terminal command(s) to achieve the task you requested, without any additional explanations or instructions. Simply type your request, and I will respond with the appropriate command(s) to carry out the task."""},
+                {"role": "user", "content": userInput},
+            ],
+        )
+
+        print(f""">{userInput}\n""")
+        omniscientOutput = completion.choices[0].message.content
+        print(omniscientOutput)
+        totaltoken += completion.usage.total_tokens
+        print(
+            f"— Used {completion.usage.total_tokens} tokens. (${0.002/1000*completion.usage.total_tokens})\n")
+
+        # Run Omniscient Output
+        os.system(omniscientOutput)
